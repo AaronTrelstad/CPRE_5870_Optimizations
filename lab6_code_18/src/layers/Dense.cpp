@@ -102,29 +102,41 @@ namespace ML {
 
         const size TILE_I = 64;
 
-        // Use thread pool — partition output neurons, tiled input access
-        ThreadPool::instance().parallelFor(out_size, [&](size o_start, size o_end_local) {
-            size o_len = o_end_local - o_start;
+        // Partition output neurons with 8-aligned boundaries for SIMD vectorization
+        unsigned int nThreads = ThreadPool::instance().getNumThreads();
+        if (nThreads > out_size) nThreads = (unsigned int)out_size;
+        size chunk_base = out_size / nThreads;
+        // Round chunk size up to multiple of 8
+        size chunk_aligned = ((chunk_base + 7) / 8) * 8;
 
-            // Init with biases
-            for (size o = 0; o < o_len; o++) output[o_start + o] = biases[o_start + o];
+        ThreadPool::instance().parallelFor(nThreads, [&](size t_start, size t_end_local) {
+            for (size t = t_start; t < t_end_local; t++) {
+                size o_start = t * chunk_aligned;
+                size o_end = (t + 1 < nThreads) ? (t + 1) * chunk_aligned : out_size;
+                if (o_start >= out_size) return;
+                if (o_end > out_size) o_end = out_size;
+                size o_len = o_end - o_start;
 
-            // Tiled MAC
-            for (size i0 = 0; i0 < in_size; i0 += TILE_I) {
-                size i_end = (i0 + TILE_I < in_size) ? i0 + TILE_I : in_size;
-                for (size i = i0; i < i_end; i++) {
-                    fp32 in_val = input[i];
-                    const fp32* w_row = weights + i * out_size + o_start;
-                    fp32* out_ptr = output + o_start;
-                    for (size o = 0; o < o_len; o++) {
-                        out_ptr[o] += in_val * w_row[o];
+                // Init with biases
+                for (size o = 0; o < o_len; o++) output[o_start + o] = biases[o_start + o];
+
+                // Tiled MAC
+                for (size i0 = 0; i0 < in_size; i0 += TILE_I) {
+                    size i_end = (i0 + TILE_I < in_size) ? i0 + TILE_I : in_size;
+                    for (size i = i0; i < i_end; i++) {
+                        fp32 in_val = input[i];
+                        const fp32* w_row = weights + i * out_size + o_start;
+                        fp32* out_ptr = output + o_start;
+                        for (size o = 0; o < o_len; o++) {
+                            out_ptr[o] += in_val * w_row[o];
+                        }
                     }
                 }
-            }
 
-            // Activation
-            for (size o = 0; o < o_len; o++) {
-                output[o_start + o] = Activation::apply(output[o_start + o], act);
+                // Activation
+                for (size o = 0; o < o_len; o++) {
+                    output[o_start + o] = Activation::apply(output[o_start + o], act);
+                }
             }
         });
     }

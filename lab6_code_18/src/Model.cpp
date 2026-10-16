@@ -7,7 +7,7 @@ namespace ML {
 
 // Run inference on the entire model using the inData and outputting the outData
 // infType can be used to determine the inference function to call
-const LayerData& Model::inference(const LayerData& inData, const Layer::InfType infType, Profiler* profiler) const {
+const LayerData& Model::inference(const LayerData& inData, const Layer::InfType infType, Profiler* profiler) {
     assert(layers.size() > 0 && "There must be at least 1 layer to perform inference");
 
     const LayerData* currentInput = &inData;
@@ -27,7 +27,7 @@ const LayerData& Model::inference(const LayerData& inData, const Layer::InfType 
 
 // Run inference on a single layer of the model using the inData and outputting the outData
 // infType can be used to determine the inference function to call
-const LayerData& Model::inferenceLayer(const LayerData& inData, const int layerNum, const Layer::InfType infType) const {
+const LayerData& Model::inferenceLayer(const LayerData& inData, const int layerNum, const Layer::InfType infType) {
     Layer& layer = *layers[layerNum];
 
     assert(layer.getInputParams().isCompatible(inData.getParams()) && "Input data is not compatible with layer");

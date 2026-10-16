@@ -1,7 +1,7 @@
 #include "Softmax.h"
 
 namespace ML {
-    void SoftmaxLayer::computeNaive(const LayerData& dataIn) const {
+    void SoftmaxLayer::computeNaive(const LayerData& dataIn) {
         std::size_t N = getInputParams().flat_count();
 
         // Add numerical stability to avoid overflow: https://stackoverflow.com/questions/42599498/numerically-stable-softmax
@@ -22,9 +22,9 @@ namespace ML {
         }
     }
 
-    void SoftmaxLayer::computeThreaded(const LayerData& dataIn) const { computeNaive(dataIn); }
-    void SoftmaxLayer::computeTiled(const LayerData& dataIn) const { computeNaive(dataIn); }
-    void SoftmaxLayer::computeCombined(const LayerData& dataIn) const { computeNaive(dataIn); }
+    void SoftmaxLayer::computeThreaded(const LayerData& dataIn) { computeNaive(dataIn); }
+    void SoftmaxLayer::computeTiled(const LayerData& dataIn) { computeNaive(dataIn); }
+    void SoftmaxLayer::computeCombined(const LayerData& dataIn) { computeNaive(dataIn); }
 
     size SoftmaxLayer::getNumMACs() const {
         return 0;

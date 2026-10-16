@@ -1,9 +1,10 @@
 #include "Convolutional.h"
+#include "../Config.h"
 #include "../ThreadPool.h"
 
 namespace ML {
 
-    void ConvolutionalLayer::computeNaive(const LayerData& dataIn) const {
+    void ConvolutionalLayer::computeNaive(const LayerData& dataIn) {
         const dimVec& in_dims = getInputParams().dims;
         const dimVec& out_dims = getOutputParams().dims;
         const dimVec& weight_dims = getWeightParams().dims;
@@ -21,7 +22,7 @@ namespace ML {
 
         for (size p = 0; p < P; p++) {
             for (size q = 0; q < Q; q++) {
-                fp32 acc[128];
+                fp32 acc[Config::CONV_MAX_M];
                 for (size m = 0; m < M; m++) acc[m] = biases[m];
 
                 for (size r = 0; r < R; r++) {
@@ -45,19 +46,19 @@ namespace ML {
         }
     }
 
-    void ConvolutionalLayer::computeThreaded(const LayerData& dataIn) const {
+    void ConvolutionalLayer::computeThreaded(const LayerData& dataIn) {
         // Only use threading if enough work to amortize pool overhead
-        if (getCachedMACs() < 100000) {
+        if (getCachedMACs() < Config::THREADING_MAC_THRESHOLD) {
             computeNaive(dataIn);
         } else {
             computeCombined(dataIn);
         }
     }
 
-    void ConvolutionalLayer::computeTiled(const LayerData& dataIn) const {
+    void ConvolutionalLayer::computeTiled(const LayerData& dataIn) {
         // Skip tiling if working set fits in L1 (32KB)
         size weight_bytes = getWeightParams().flat_count() * sizeof(fp32);
-        if (weight_bytes < 8192) {
+        if (weight_bytes < Config::TILING_BYTE_THRESHOLD) {
             computeNaive(dataIn);
             return;
         }
@@ -78,9 +79,9 @@ namespace ML {
         ActivationType act = getActivationType();
 
         // Tile sizes tuned for L1 cache (32KB on Zedboard)
-        const size TILE_M = 16;
-        const size TILE_P = 4;
-        const size TILE_Q = 4;
+        const size TILE_M = Config::CONV_TILE_M;
+        const size TILE_P = Config::CONV_TILE_P;
+        const size TILE_Q = Config::CONV_TILE_Q;
 
         for (size m0 = 0; m0 < M; m0 += TILE_M) {
             size m_end = (m0 + TILE_M < M) ? m0 + TILE_M : M;
@@ -133,9 +134,9 @@ namespace ML {
         }
     }
 
-    void ConvolutionalLayer::computeCombined(const LayerData& dataIn) const {
+    void ConvolutionalLayer::computeCombined(const LayerData& dataIn) {
         // Fall back to tiled-only if not enough work for threading
-        if (getCachedMACs() < 100000) {
+        if (getCachedMACs() < Config::THREADING_MAC_THRESHOLD) {
             computeTiled(dataIn);
             return;
         }
@@ -155,8 +156,8 @@ namespace ML {
         const fp32* biases = (const fp32*)getBiasData().raw();
         ActivationType act = getActivationType();
 
-        const size TILE_Q = 4;
-        const size MAX_M = 128;
+        const size TILE_Q = Config::CONV_TILE_Q;
+        const size MAX_M = Config::CONV_MAX_M;
 
         // Use thread pool — threads are created once and reused across layers
         // Accumulate all M channels at once so each input value is loaded exactly once

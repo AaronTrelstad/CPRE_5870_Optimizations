@@ -10,6 +10,7 @@
 #include "Types.h"
 #include "Utils.h"
 #include "layers/Convolutional.h"
+#include "layers/ConvPool.h"
 #include "layers/Dense.h"
 #include "layers/Layer.h"
 #include "layers/Flatten.h"
@@ -37,22 +38,15 @@ Model buildToyModel(const Path modelPath) {
         LayerParams{sizeof(fp32), {32}, modelPath / "conv1_biases.bin"}            // Bias
     );
 
-    // --- Conv 2: L2 ---
+    // --- Fused Conv2+Pool1: L2 ---
     // Input shape: 60x60x32
-    // Output shape: 56x56x32
-    model.addLayer<ConvolutionalLayer>(
+    // Conv output: 56x56x32, then 2x2 max pool
+    // Output shape: 28x28x32
+    model.addLayer<ConvPoolLayer>(
         LayerParams{sizeof(fp32), {60, 60, 32}},
-        LayerParams{sizeof(fp32), {56, 56, 32}},
+        LayerParams{sizeof(fp32), {28, 28, 32}},
         LayerParams{sizeof(fp32), {5, 5, 32, 32}, modelPath / "conv2_weights.bin"},
         LayerParams{sizeof(fp32), {32}, modelPath / "conv2_biases.bin"}
-    );
-
-    // --- MPL 1: L3 ---
-    // Input shape: 56x56x32
-    // Output shape: 28x28x32
-    model.addLayer<MaxPoolingLayer>(
-        LayerParams{sizeof(fp32), {56, 56, 32}},
-        LayerParams{sizeof(fp32), {28, 28, 32}}
     );
 
     // --- Conv 3: L4 ---
@@ -65,22 +59,15 @@ Model buildToyModel(const Path modelPath) {
         LayerParams{sizeof(fp32), {64}, modelPath / "conv3_biases.bin"}
     );
 
-    // --- Conv 4: L5 ---
+    // --- Fused Conv4+Pool2: L4 ---
     // Input shape: 26x26x64
-    // Output shape: 24x24x64
-    model.addLayer<ConvolutionalLayer>(
+    // Conv output: 24x24x64, then 2x2 max pool
+    // Output shape: 12x12x64
+    model.addLayer<ConvPoolLayer>(
         LayerParams{sizeof(fp32), {26, 26, 64}},
-        LayerParams{sizeof(fp32), {24, 24, 64}},
+        LayerParams{sizeof(fp32), {12, 12, 64}},
         LayerParams{sizeof(fp32), {3, 3, 64, 64}, modelPath / "conv4_weights.bin"},
         LayerParams{sizeof(fp32), {64}, modelPath / "conv4_biases.bin"}
-    );
-
-    // --- MPL 2: L6 ---
-    // Input shape: 24x24x64
-    // Output shape: 12x12x64
-    model.addLayer<MaxPoolingLayer>(
-        LayerParams{sizeof(fp32), {24, 24, 64}},
-        LayerParams{sizeof(fp32), {12, 12, 64}}
     );
 
     // --- Conv 5: L7 ---
@@ -93,22 +80,15 @@ Model buildToyModel(const Path modelPath) {
         LayerParams{sizeof(fp32), {64}, modelPath / "conv5_biases.bin"}
     );
 
-    // --- Conv 6: L8 ---
+    // --- Fused Conv6+Pool3: L6 ---
     // Input shape: 10x10x64
-    // Output shape: 8x8x128
-    model.addLayer<ConvolutionalLayer>(
+    // Conv output: 8x8x128, then 2x2 max pool
+    // Output shape: 4x4x128
+    model.addLayer<ConvPoolLayer>(
         LayerParams{sizeof(fp32), {10, 10, 64}},
-        LayerParams{sizeof(fp32), {8, 8, 128}},
+        LayerParams{sizeof(fp32), {4, 4, 128}},
         LayerParams{sizeof(fp32), {3, 3, 64, 128}, modelPath / "conv6_weights.bin"},
         LayerParams{sizeof(fp32), {128}, modelPath / "conv6_biases.bin"}
-    );
-
-    // --- MPL 3: L9 ---
-    // Input shape: 8x8x128
-    // Output shape: 4x4x128
-    model.addLayer<MaxPoolingLayer>(
-        LayerParams{sizeof(fp32), {8, 8, 128}},
-        LayerParams{sizeof(fp32), {4, 4, 128}}
     );
 
     // --- Flatten 1: L10 ---
@@ -151,7 +131,7 @@ Model buildToyModel(const Path modelPath) {
     return model;
 }
 
-void runBasicTest(const Model& model, const Path& basePath) {
+void runBasicTest(Model& model, const Path& basePath) {
     logInfo("--- Running Basic Test ---");
 
     // Load an image
@@ -181,7 +161,7 @@ void runBasicTest(const Model& model, const Path& basePath) {
     std::cout << "\n" << std::endl;
 }
 
-void runLayerTest(const std::size_t layerNum, const Model& model, const Path& basePath) {
+void runLayerTest(const std::size_t layerNum, Model& model, const Path& basePath) {
     logInfo(std::string("--- Running Layer Test ") + std::to_string(layerNum) + " ---");
 
     if (layerNum >= model.getNumLayers()) {
@@ -237,7 +217,7 @@ void runLayerTest(const std::size_t layerNum, const Model& model, const Path& ba
         << std::endl;
 }
 
-void runInferenceTest(const Model& model, const Path& basePath, Layer::InfType infType = Layer::InfType::NAIVE, const std::string& label = "NAIVE") {
+void runInferenceTest(Model& model, const Path& basePath, Layer::InfType infType = Layer::InfType::NAIVE, const std::string& label = "NAIVE") {
     logInfo(std::string("--- Running Inference Test (") + label + ") ---");
 
     LayerData img(model[0].getInputParams(), basePath / "image_0.bin");
@@ -255,7 +235,7 @@ void runInferenceTest(const Model& model, const Path& basePath, Layer::InfType i
     profiler.printReport();
 }
 
-void runValidationEval(const Model& model, int numImages) {
+void runValidationEval(Model& model, int numImages) {
     std::ifstream labelsFile("data/val_images/labels.txt");
     if (!labelsFile.is_open()) {
         logError("failed labels.txt");

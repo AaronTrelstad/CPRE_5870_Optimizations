@@ -139,7 +139,8 @@ class Layer {
     // Getter Functions
     const LayerParams& getInputParams() const { return inParams; }
     const LayerParams& getOutputParams() const { return outParams; }
-    LayerData& getOutputData() const { return outData; }
+    const LayerData& getOutputData() const { return outData; }
+    LayerData& getOutputData() { return outData; }
     LayerType getLType() const { return lType; }
     bool isOutputBufferAlloced() const { return outData.isAlloced(); }
     bool checkDataInputCompatibility(const LayerData& data) const;
@@ -157,11 +158,11 @@ class Layer {
         outData.freeData();
     }
 
-    virtual void computeNaive(const LayerData& dataIn) const = 0;
-    virtual void computeThreaded(const LayerData& dataIn) const = 0;
-    virtual void computeTiled(const LayerData& dataIn) const = 0;
-    virtual void computeCombined(const LayerData& dataIn) const = 0;
-    virtual size getNumMACs() const = 0;
+    virtual void computeNaive(const LayerData& dataIn) = 0;
+    virtual void computeThreaded(const LayerData& dataIn) = 0;
+    virtual void computeTiled(const LayerData& dataIn) = 0;
+    virtual void computeCombined(const LayerData& dataIn) = 0;
+    virtual size getNumMACs() const = 0;  // remains const — purely reads dimensions
 
     static const char* to_string(LayerType layerType) {
         switch (layerType) {
@@ -180,7 +181,7 @@ class Layer {
     LayerParams inParams;
 
     LayerParams outParams;
-    mutable LayerData outData;
+    LayerData outData;
 
     LayerType lType;
     size cachedMACs;

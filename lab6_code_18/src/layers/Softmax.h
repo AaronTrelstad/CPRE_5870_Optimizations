@@ -12,10 +12,10 @@ class SoftmaxLayer : public Layer {
         : Layer(inParams, outParams, LayerType::SOFTMAX) {}
 
     // Virtual functions
-    virtual void computeNaive(const LayerData& dataIn) const override;
-    virtual void computeThreaded(const LayerData& dataIn) const override;
-    virtual void computeTiled(const LayerData& dataIn) const override;
-    virtual void computeCombined(const LayerData& dataIn) const override;
+    virtual void computeNaive(const LayerData& dataIn) override;
+    virtual void computeThreaded(const LayerData& dataIn) override;
+    virtual void computeTiled(const LayerData& dataIn) override;
+    virtual void computeCombined(const LayerData& dataIn) override;
     virtual size getNumMACs() const override;
 };
 }

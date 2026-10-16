@@ -18,8 +18,8 @@ class Model {
     inline Model() : layers() {}  //, checkFinal(true), checkEachLayer(false) {}
 
     // Functions
-    const LayerData& inference(const LayerData& inData, const Layer::InfType infType = Layer::InfType::NAIVE, Profiler* profiler = nullptr) const;
-    const LayerData& inferenceLayer(const LayerData& inData, const int layerNum, const Layer::InfType infType = Layer::InfType::NAIVE) const;
+    const LayerData& inference(const LayerData& inData, const Layer::InfType infType = Layer::InfType::NAIVE, Profiler* profiler = nullptr);
+    const LayerData& inferenceLayer(const LayerData& inData, const int layerNum, const Layer::InfType infType = Layer::InfType::NAIVE);
 
     // Internal memory management
     // Allocate the internal output buffers for each layer in the model
@@ -53,10 +53,10 @@ class Model {
     inline const Layer& operator[](const std::size_t idx) const { return *layers[idx]; }
 
     // Call operators (run inference)
-    inline const LayerData& operator()(const LayerData& inData, const Layer::InfType infType = Layer::InfType::NAIVE, Profiler* profiler = nullptr) const {
+    inline const LayerData& operator()(const LayerData& inData, const Layer::InfType infType = Layer::InfType::NAIVE, Profiler* profiler = nullptr) {
         return inference(inData, infType, profiler);
     }
-    inline const LayerData& operator()(const LayerData& inData, const int layerNum, const Layer::InfType infType = Layer::InfType::NAIVE) const {
+    inline const LayerData& operator()(const LayerData& inData, const int layerNum, const Layer::InfType infType = Layer::InfType::NAIVE) {
         return inferenceLayer(inData, layerNum, infType);
     }
 

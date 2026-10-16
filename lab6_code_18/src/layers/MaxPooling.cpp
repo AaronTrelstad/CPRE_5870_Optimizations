@@ -1,7 +1,7 @@
 #include "MaxPooling.h"
 
 namespace ML {
-    void MaxPoolingLayer::computeNaive(const LayerData& dataIn) const {
+    void MaxPoolingLayer::computeNaive(const LayerData& dataIn) {
         const dimVec& in_dims = getInputParams().dims;
         const dimVec& out_dims = getOutputParams().dims;
 
@@ -38,9 +38,9 @@ namespace ML {
         }
     }
 
-    void MaxPoolingLayer::computeThreaded(const LayerData& dataIn) const { computeNaive(dataIn); }
-    void MaxPoolingLayer::computeTiled(const LayerData& dataIn) const { computeNaive(dataIn); }
-    void MaxPoolingLayer::computeCombined(const LayerData& dataIn) const { computeNaive(dataIn); }
+    void MaxPoolingLayer::computeThreaded(const LayerData& dataIn) { computeNaive(dataIn); }
+    void MaxPoolingLayer::computeTiled(const LayerData& dataIn) { computeNaive(dataIn); }
+    void MaxPoolingLayer::computeCombined(const LayerData& dataIn) { computeNaive(dataIn); }
 
     size MaxPoolingLayer::getNumMACs() const {
         return 0;

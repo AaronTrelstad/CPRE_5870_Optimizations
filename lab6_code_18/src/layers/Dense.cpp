@@ -1,8 +1,9 @@
 #include "Dense.h"
+#include "../Config.h"
 #include "../ThreadPool.h"
 
 namespace ML {
-    void DenseLayer::computeNaive(const LayerData& dataIn) const {
+    void DenseLayer::computeNaive(const LayerData& dataIn) {
         size in_size = getInputParams().flat_count();
         size out_size = getOutputParams().flat_count();
 
@@ -12,7 +13,7 @@ namespace ML {
         const fp32* biases = (const fp32*)getBiasData().raw();
         ActivationType act = getActivationType();
 
-        fp32 acc[256];
+        fp32 acc[Config::DENSE_MAX_OUT];
         for (size o = 0; o < out_size; o++) acc[o] = biases[o];
 
         for (size i = 0; i < in_size; i++) {
@@ -28,18 +29,18 @@ namespace ML {
         }
     }
 
-    void DenseLayer::computeThreaded(const LayerData& dataIn) const {
-        if (getCachedMACs() < 100000) {
+    void DenseLayer::computeThreaded(const LayerData& dataIn) {
+        if (getCachedMACs() < Config::THREADING_MAC_THRESHOLD) {
             computeNaive(dataIn);
         } else {
             computeCombined(dataIn);
         }
     }
 
-    void DenseLayer::computeTiled(const LayerData& dataIn) const {
+    void DenseLayer::computeTiled(const LayerData& dataIn) {
         // Skip tiling if weight matrix fits in L1
         size weight_bytes = getInputParams().flat_count() * getOutputParams().flat_count() * sizeof(fp32);
-        if (weight_bytes < 8192) {
+        if (weight_bytes < Config::TILING_BYTE_THRESHOLD) {
             computeNaive(dataIn);
             return;
         }
@@ -54,8 +55,8 @@ namespace ML {
         ActivationType act = getActivationType();
 
         // Tile sizes for L1 cache fitting
-        const size TILE_O = 16;  // Output tile
-        const size TILE_I = 64;  // Input tile
+        const size TILE_O = Config::DENSE_TILE_O;
+        const size TILE_I = Config::DENSE_TILE_I;
 
         // Init output with biases
         for (size o = 0; o < out_size; o++) output[o] = biases[o];
@@ -84,9 +85,9 @@ namespace ML {
         }
     }
 
-    void DenseLayer::computeCombined(const LayerData& dataIn) const {
+    void DenseLayer::computeCombined(const LayerData& dataIn) {
         // Fall back to tiled-only if not enough work for threading
-        if (getCachedMACs() < 100000) {
+        if (getCachedMACs() < Config::THREADING_MAC_THRESHOLD) {
             computeTiled(dataIn);
             return;
         }
@@ -100,7 +101,7 @@ namespace ML {
         const fp32* biases = (const fp32*)getBiasData().raw();
         ActivationType act = getActivationType();
 
-        const size TILE_I = 64;
+        const size TILE_I = Config::DENSE_TILE_I;
 
         // Partition output neurons with 8-aligned boundaries for SIMD vectorization
         unsigned int nThreads = ThreadPool::instance().getNumThreads();
